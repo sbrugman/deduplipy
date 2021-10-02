@@ -9,6 +9,17 @@ from scipy.cluster import hierarchy
 from deduplipy.config import DEDUPLICATION_ID_NAME, ROW_ID
 
 
+def make_cluster(subgraph: nx.Graph, cluster_threshold: float):
+    adjacency = nx.to_numpy_matrix(subgraph, weight="score")
+    distances = (np.ones_like(adjacency) - np.eye(len(adjacency))) - adjacency
+    condensed_distance = ssd.squareform(distances)
+    linkage = hierarchy.linkage(condensed_distance, method="centroid")
+    clusters = hierarchy.fcluster(
+        linkage, t=1 - cluster_threshold, criterion="distance"
+    )
+    return clusters
+
+
 def hierarchical_clustering(
     scored_pairs_table: pd.DataFrame, col_names: List, cluster_threshold: float = 0.5
 ) -> pd.DataFrame:
@@ -42,13 +53,7 @@ def hierarchical_clustering(
     for component in components:
         subgraph = graph.subgraph(component)
         if len(subgraph.nodes) > 1:
-            adjacency = nx.to_numpy_matrix(subgraph, weight="score")
-            distances = (np.ones_like(adjacency) - np.eye(len(adjacency))) - adjacency
-            condensed_distance = ssd.squareform(distances)
-            linkage = hierarchy.linkage(condensed_distance, method="centroid")
-            clusters = hierarchy.fcluster(
-                linkage, t=1 - cluster_threshold, criterion="distance"
-            )
+            clusters = make_cluster(subgraph, cluster_threshold)
         else:
             clusters = np.array([1])
         clustering.update(dict(zip(subgraph.nodes(), clusters + cluster_counter)))
