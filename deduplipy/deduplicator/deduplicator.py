@@ -1,5 +1,5 @@
 from itertools import product
-from typing import List, Dict, Optional, Callable, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -7,14 +7,24 @@ import pandas as pd
 from deduplipy.active_learning.active_learning import ActiveStringMatchLearner
 from deduplipy.blocking import Blocking, all_rules
 from deduplipy.clustering.clustering import hierarchical_clustering
-from deduplipy.string_metrics.string_metrics import adjusted_ratio, adjusted_token_sort_ratio
 from deduplipy.config import DEDUPLICATION_ID_NAME, ROW_ID
+from deduplipy.string_metrics.string_metrics import (
+    adjusted_ratio,
+    adjusted_token_sort_ratio,
+)
 
 
 class Deduplicator:
-    def __init__(self, col_names: Optional[List[str]] = None, field_info: Optional[Dict] = None,
-                 interaction: bool = False, rules: Union[List[Callable], Dict] = None, recall=1.0,
-                 save_intermediate_steps: bool = False, verbose: Union[int, bool] = 0) -> 'Deduplicator':
+    def __init__(
+        self,
+        col_names: Optional[List[str]] = None,
+        field_info: Optional[Dict[str, Any]] = None,
+        interaction: bool = False,
+        rules: Union[List[Callable], Dict] = None,
+        recall: float = 1.0,
+        save_intermediate_steps: bool = False,
+        verbose: Union[int, bool] = 0,
+    ):
         """
         Deduplicate entries in Pandas dataframe using columns with names `col_names`. Training takes place during a
         short, interactive session (interactive learning).
@@ -43,8 +53,10 @@ class Deduplicator:
         """
         if col_names:
             self.col_names = col_names
-            self.field_info = {col_name: [adjusted_ratio, adjusted_token_sort_ratio] for col_name in
-                               self.col_names}
+            self.field_info = {
+                col_name: [adjusted_ratio, adjusted_token_sort_ratio]
+                for col_name in self.col_names
+            }
         else:
             self.field_info = field_info
             self.col_names = list(self.field_info.keys())
@@ -57,34 +69,39 @@ class Deduplicator:
         elif isinstance(self.rules, dict):
             self.rules_info = self.rules
         else:
-            raise Exception('`rules` must be a list or a dict')
+            raise Exception("`rules` must be a list or a dict")
         self.recall = recall
         self.save_intermediate_steps = save_intermediate_steps
         self.verbose = verbose
-        self.myActiveLearner = ActiveStringMatchLearner(col_names=self.col_names, interaction=self.interaction,
-                                                        verbose=self.verbose)
-        self.myBlocker = Blocking(self.col_names, self.rules_info, recall=self.recall,
-                                  save_intermediate_steps=self.save_intermediate_steps)
+        self.myActiveLearner = ActiveStringMatchLearner(
+            col_names=self.col_names, interaction=self.interaction, verbose=self.verbose
+        )
+        self.myBlocker = Blocking(
+            self.col_names,
+            self.rules_info,
+            recall=self.recall,
+            save_intermediate_steps=self.save_intermediate_steps,
+        )
 
     def __repr__(self):
-        repr_dict = {x: self.__dict__[x] for x in
-                     ['col_names', 'field_info', 'interaction', 'rules_info', 'recall']}
+        repr_dict = {
+            x: self.__dict__[x]
+            for x in ["col_names", "field_info", "interaction", "rules_info", "recall"]
+        }
 
-        field_info_str = dict()
-        for key, value in repr_dict['field_info'].items():
-            list_str = [x.__name__ for x in value]
-            field_info_str.update({key: list_str})
-        repr_dict.update({'field_info': field_info_str})
+        repr_dict["field_info"] = {
+            key: [x.__name__ for x in value]
+            for key, value in repr_dict["field_info"].items()
+        }
 
-        rules_info_str = dict()
-        for key, value in repr_dict['rules_info'].items():
-            list_str = [x.__name__ for x in value]
-            rules_info_str.update({key: list_str})
-        repr_dict.update({'rules_info': rules_info_str})
+        repr_dict["rules_info"] = {
+            key: [x.__name__ for x in value]
+            for key, value in repr_dict["rules_info"].items()
+        }
 
-        repr_str = 'Deduplicator\n'
+        repr_str = "Deduplicator\n"
         for key, value in repr_dict.items():
-            repr_str += f'  - {key} = {value}\n'
+            repr_str += f"  - {key} = {value}\n"
         return repr_str
 
     def _create_pairs_table(self, X: pd.DataFrame, n_samples: int) -> pd.DataFrame:
@@ -104,35 +121,52 @@ class Deduplicator:
         df_sample = X_pool.sample(n=int(n_samples ** 0.5))
 
         pairs_table = pd.DataFrame(
-            list(product(df_sample[self.col_names + [ROW_ID]].values.tolist(),
-                         df_sample[self.col_names + [ROW_ID]].values.tolist())))
+            list(
+                product(
+                    df_sample[self.col_names + [ROW_ID]].values.tolist(),
+                    df_sample[self.col_names + [ROW_ID]].values.tolist(),
+                )
+            )
+        )
 
-        pairs_table[[f'{x}_1' for x in self.col_names + [ROW_ID]]] = pairs_table[0].to_list()
-        pairs_table[[f'{x}_2' for x in self.col_names + [ROW_ID]]] = pairs_table[1].to_list()
+        pairs_table[[f"{x}_1" for x in self.col_names + [ROW_ID]]] = pairs_table[
+            0
+        ].to_list()
+        pairs_table[[f"{x}_2" for x in self.col_names + [ROW_ID]]] = pairs_table[
+            1
+        ].to_list()
         pairs_table.drop(columns=[0, 1], inplace=True)
 
-        pairs_table.sort_values([f'{ROW_ID}_1', f'{ROW_ID}_2'], inplace=True)
+        pairs_table.sort_values([f"{ROW_ID}_1", f"{ROW_ID}_2"], inplace=True)
 
         pairs_table = pairs_table[
-            pairs_table[f'{ROW_ID}_1'] <= pairs_table[f'{ROW_ID}_2']]
-        self.pairs_col_names = [f'{x}_1' for x in self.col_names] + [f'{x}_2' for x in self.col_names]
-        pairs_table = pairs_table[self.pairs_col_names].reset_index(
-            drop=True)
+            pairs_table[f"{ROW_ID}_1"] <= pairs_table[f"{ROW_ID}_2"]
+        ]
+        self.pairs_col_names = [f"{x}_1" for x in self.col_names] + [
+            f"{x}_2" for x in self.col_names
+        ]
+        pairs_table = pairs_table[self.pairs_col_names].reset_index(drop=True)
         return pairs_table
 
     def _calculate_string_similarities(self, X: pd.DataFrame) -> pd.DataFrame:
         metrics_col_names = []
         for field in self.field_info.keys():
             for metric in self.field_info[field]:
-                metrics_col_name = f'{field}_{metric.__name__}'
-                X[metrics_col_name] = X.apply(lambda row: metric(row[f'{field}_1'], row[f'{field}_2']), axis=1)
+                metrics_col_name = f"{field}_{metric.__name__}"
+                X[metrics_col_name] = X.apply(
+                    lambda row: metric(row[f"{field}_1"], row[f"{field}_2"]), axis=1
+                )
                 metrics_col_names.append(metrics_col_name)
-        X['similarities'] = X.apply(lambda row: [row[metrics_col_name] for metrics_col_name in metrics_col_names],
-                                    axis=1)
+        X["similarities"] = X.apply(
+            lambda row: [
+                row[metrics_col_name] for metrics_col_name in metrics_col_names
+            ],
+            axis=1,
+        )
         X.drop(columns=metrics_col_names, inplace=True)
         return X
 
-    def fit(self, X: pd.DataFrame, n_samples: int = 10_000) -> 'Deduplicator':
+    def fit(self, X: pd.DataFrame, n_samples: int = 10_000) -> "Deduplicator":
         """
         Fit the deduplicator instance
 
@@ -147,13 +181,18 @@ class Deduplicator:
         similarities = self._calculate_string_similarities(pairs_table)
         self.myActiveLearner.fit(similarities)
         if self.verbose:
-            print('active learning finished')
+            print("active learning finished")
         # calculate predictions on pairs table to use for blocking
-        y_pred = self.myActiveLearner.predict(similarities['similarities'].to_list())
+        y_pred = self.myActiveLearner.predict(similarities["similarities"].to_list())
         self.myBlocker.fit(similarities[self.pairs_col_names], y_pred)
         if self.verbose:
-            print('blocking rules found')
-            print([x['col_name'] + " " + x['function_name'] for x in self.myBlocker.rules_selected])
+            print("blocking rules found")
+            print(
+                [
+                    x["col_name"] + " " + x["function_name"]
+                    for x in self.myBlocker.rules_selected
+                ]
+            )
         return self
 
     @staticmethod
@@ -169,12 +208,20 @@ class Deduplicator:
 
         """
         n_missing = len(X[X[DEDUPLICATION_ID_NAME].isnull()])
-        max_cluster_id = X[X[DEDUPLICATION_ID_NAME].notnull()][DEDUPLICATION_ID_NAME].max()
-        X.loc[X[DEDUPLICATION_ID_NAME].isnull(), DEDUPLICATION_ID_NAME] = np.arange(max_cluster_id + 1,
-                                                                                    max_cluster_id + 1 + n_missing)
+        max_cluster_id = X[X[DEDUPLICATION_ID_NAME].notnull()][
+            DEDUPLICATION_ID_NAME
+        ].max()
+        X.loc[X[DEDUPLICATION_ID_NAME].isnull(), DEDUPLICATION_ID_NAME] = np.arange(
+            max_cluster_id + 1, max_cluster_id + 1 + n_missing
+        )
         return X
 
-    def predict(self, X: pd.DataFrame, score_threshold: float = 0.1, cluster_threshold: float = 0.5) -> pd.DataFrame:
+    def predict(
+        self,
+        X: pd.DataFrame,
+        score_threshold: float = 0.1,
+        cluster_threshold: float = 0.5,
+    ) -> pd.DataFrame:
         """
         Predict on new data using the trained deduplicator.
 
@@ -189,31 +236,41 @@ class Deduplicator:
         """
         X[ROW_ID] = np.arange(len(X))
         if self.verbose:
-            print('blocking started')
+            print("blocking started")
         pairs_table = self.myBlocker.transform(X)
         if self.verbose:
-            print('blocking finished')
-            print(f'Nr of pairs: {len(pairs_table)}')
-            print('scoring started')
+            print("blocking finished")
+            print(f"Nr of pairs: {len(pairs_table)}")
+            print("scoring started")
         scored_pairs_table = self._calculate_string_similarities(pairs_table)
-        scored_pairs_table['score'] = self.myActiveLearner.predict_proba(
-            scored_pairs_table['similarities'].tolist())[:, 1]
+        scored_pairs_table["score"] = self.myActiveLearner.predict_proba(
+            scored_pairs_table["similarities"].tolist()
+        )[:, 1]
         scored_pairs_table.loc[
-            (scored_pairs_table[[f'{x}_1' for x in self.col_names]].values == scored_pairs_table[
-                [f'{x}_2' for x in self.col_names]].values).all(axis=1), 'score'] = 1
+            (
+                scored_pairs_table[[f"{x}_1" for x in self.col_names]].values
+                == scored_pairs_table[[f"{x}_2" for x in self.col_names]].values
+            ).all(axis=1),
+            "score",
+        ] = 1
         if self.verbose:
             print("scoring finished")
-        scored_pairs_table = scored_pairs_table[scored_pairs_table['score'] >= score_threshold]
+        scored_pairs_table = scored_pairs_table[
+            scored_pairs_table["score"] >= score_threshold
+        ]
         if self.verbose:
-            print(f'Nr of filtered pairs: {len(scored_pairs_table)}')
-            print('Clustering started')
+            print(f"Nr of filtered pairs: {len(scored_pairs_table)}")
+            print("Clustering started")
         if self.save_intermediate_steps:
-            scored_pairs_table.to_csv('scored_pairs_table.csv', index=None, sep="|")
-        df_clusters = hierarchical_clustering(scored_pairs_table, col_names=self.col_names,
-                                              cluster_threshold=cluster_threshold)
-        X = X.merge(df_clusters, on=ROW_ID, how='left').drop(columns=[ROW_ID])
+            scored_pairs_table.to_csv("scored_pairs_table.csv", index=None, sep="|")
+        df_clusters = hierarchical_clustering(
+            scored_pairs_table,
+            col_names=self.col_names,
+            cluster_threshold=cluster_threshold,
+        )
+        X = X.merge(df_clusters, on=ROW_ID, how="left").drop(columns=[ROW_ID])
         if self.verbose:
-            print('Clustering finished')
+            print("Clustering finished")
         X = self._add_singletons(X)
         X[DEDUPLICATION_ID_NAME] = X[DEDUPLICATION_ID_NAME].astype(int)
         return X

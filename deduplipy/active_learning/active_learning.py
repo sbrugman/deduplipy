@@ -11,8 +11,13 @@ from deduplipy.config import N_QUERIES
 
 
 class ActiveStringMatchLearner:
-    def __init__(self, col_names: List[str], interaction: bool = False, coef_diff_threshold: float = 0.05,
-                 verbose: Union[int, bool] = 0) -> 'ActiveStringMatchLearner':
+    def __init__(
+        self,
+        col_names: List[str],
+        interaction: bool = False,
+        coef_diff_threshold: float = 0.05,
+        verbose: Union[int, bool] = 0,
+    ):
         """
         Class to train a string matching model using active learning.
 
@@ -29,7 +34,7 @@ class ActiveStringMatchLearner:
         elif isinstance(col_names, str):
             self.col_names = [col_names]
         else:
-            raise Exception('col_name should be list or string')
+            raise TypeError("col_name should be list or string")
         self.coef_diff_threshold = coef_diff_threshold
         self.verbose = verbose
         self.learner = ActiveLearner(
@@ -47,9 +52,10 @@ class ActiveStringMatchLearner:
         Returns: Logistic regression parameters
 
         """
-        if hasattr(self.learner.estimator.classifier.named_steps['logisticregression'], 'coef_'):
-            intercept = self.learner.estimator.classifier.named_steps['logisticregression'].intercept_[0]
-            coefs = self.learner.estimator.classifier.named_steps['logisticregression'].coef_[0]
+        lr = self.learner.estimator.classifier.named_steps["logisticregression"]
+        if hasattr(lr, "coef_"):
+            intercept = lr.intercept_[0]
+            coefs = lr.coef_[0]
             params = np.insert(coefs, 0, intercept)
             return params
         else:
@@ -90,19 +96,44 @@ class ActiveStringMatchLearner:
         else:
             params_str = ""
         if self.verbose:
-            print(f'\nNr. {self.counter_total + 1} ({self.counter_positive}+/{self.counter_negative}-)', params_str)
+            print(
+                f"\nNr. {self.counter_total + 1} ({self.counter_positive}+/{self.counter_negative}-)",
+                params_str,
+            )
         else:
-            print(f'\nNr. {self.counter_total + 1} ({self.counter_positive}+/{self.counter_negative}-)')
+            print(
+                f"\nNr. {self.counter_total + 1} ({self.counter_positive}+/{self.counter_negative}-)"
+            )
         print("Is this a match? (y)es, (n)o, (p)revious, (s)kip, (f)inish")
-        with pd.option_context('display.max_colwidth', -1):
-            print('->', query_inst[[f'{col_name}_1' for col_name in self.col_names]].iloc[0].to_string())
-            print('->', query_inst[[f'{col_name}_2' for col_name in self.col_names]].iloc[0].to_string())
-        user_input = input_assert("", ['0', '1', 'y', 'n', 'p', 'f', 's'])
-        # replace 'y' and 'n' with '1' and '0' to make them valid y labels
-        user_input = user_input.replace('y', '1').replace('n', '0')
-        # replace 'p' (previous) by '-1', 'f' (finished) by '9', and 's' (skip) by '8'
-        user_input = user_input.replace('p', '-1').replace('f', '9').replace('s', '8')
-        y_new = np.array([int(user_input)], dtype=int)
+        with pd.option_context("display.max_colwidth", -1):
+            print(
+                "->",
+                query_inst[[f"{col_name}_1" for col_name in self.col_names]]
+                .iloc[0]
+                .to_string(),
+            )
+            print(
+                "->",
+                query_inst[[f"{col_name}_2" for col_name in self.col_names]]
+                .iloc[0]
+                .to_string(),
+            )
+        user_input = input_assert("", ["0", "1", "y", "n", "p", "f", "s"])
+
+        input_map = {
+            # replace 'y' and 'n' with '1' and '0' to make them valid y labels
+            "y": 1,
+            "1": 1,
+            "n": 0,
+            "0": 0,
+            # replace 'p' (previous) by '-1', 'f' (finished) by '9', and 's' (skip) by '8'
+            "p": -1,
+            "f": 9,
+            "s": 8,
+        }
+
+        user_input_int = input_map[user_input]
+        y_new = np.array([user_input_int], dtype=int)
         return y_new
 
     def _print_score_histogram(self, X: pd.DataFrame) -> None:
@@ -113,12 +144,13 @@ class ActiveStringMatchLearner:
             X: features to calculate predict_proba for
 
         """
-        probas = self.learner.predict_proba(X['similarities'].tolist())[:, 1]
+        probas = self.learner.predict_proba(X["similarities"].tolist())[:, 1]
         count, division = np.histogram(probas, bins=np.arange(0, 1.01, 0.05))
-        hist = pd.DataFrame({'count': count, 'score': division[1:]})
-        print(hist[['score', 'count']].to_string(index=False))
+        hist = pd.DataFrame({"count": count, "score": division[1:]})
+        print(hist[["score", "count"]].to_string(index=False))
+        return None
 
-    def fit(self, X: pd.DataFrame) -> 'ActiveStringMatchLearner':
+    def fit(self, X: pd.DataFrame) -> "ActiveStringMatchLearner":
         """
         Fit ActiveStringMatchLearner instance on pairs of strings
 
@@ -130,7 +162,9 @@ class ActiveStringMatchLearner:
         self.train_samples = pd.DataFrame([])
         query_inst_prev = None
         for i in range(N_QUERIES):
-            query_idx, query_inst = self.learner.query(np.array(X['similarities'].tolist()))
+            query_idx, query_inst = self.learner.query(
+                np.array(X["similarities"].tolist())
+            )
             y_new = self._get_active_learning_input(X.iloc[query_idx])
             if y_new == -1:  # use previous (input is 'p')
                 y_new = self._get_active_learning_input(query_inst_prev)
@@ -138,10 +172,12 @@ class ActiveStringMatchLearner:
                 break
             query_inst_prev = X.iloc[query_idx]
             if y_new != 8:  # skip case (input is 's')
-                self.learner.teach([X.iloc[query_idx]['similarities'].iloc[0]], y_new)
+                self.learner.teach([X.iloc[query_idx]["similarities"].iloc[0]], y_new)
                 train_sample_to_add = X.iloc[query_idx].copy()
-                train_sample_to_add['y'] = y_new
-                self.train_samples = self.train_samples.append(train_sample_to_add, ignore_index=True)
+                train_sample_to_add["y"] = y_new
+                self.train_samples = self.train_samples.append(
+                    train_sample_to_add, ignore_index=True
+                )
             X = X.drop(query_idx).reset_index(drop=True)
             self.parameters.append(self._get_lr_params())
             largest_coef_diff = self._get_largest_coef_diff()
@@ -157,6 +193,7 @@ class ActiveStringMatchLearner:
             self.counter_total += 1
         if self.verbose:
             self._print_score_histogram(X)
+        return self
 
     def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
         """

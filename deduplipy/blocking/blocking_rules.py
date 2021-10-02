@@ -1,7 +1,8 @@
 import re
+from typing import Optional
 
 
-def whole_field(x):
+def whole_field(x: str) -> Optional[str]:
     x_trimmed = x.strip()
     if len(x_trimmed):
         return x_trimmed
@@ -9,7 +10,7 @@ def whole_field(x):
         return None
 
 
-def first_word(x):
+def first_word(x: str) -> Optional[str]:
     x_trimmed = x.strip()
     if len(x_trimmed):
         return x_trimmed.split()[0]
@@ -17,7 +18,7 @@ def first_word(x):
         return None
 
 
-def first_two_words(x):
+def first_two_words(x: str) -> Optional[str]:
     x_trimmed = x.strip()
     if len(x_trimmed):
         return " ".join(x_trimmed.split()[:2])
@@ -25,7 +26,7 @@ def first_two_words(x):
         return None
 
 
-def first_three_letters(x):
+def first_three_letters(x: str) -> Optional[str]:
     x_trimmed = x.strip()
     if len(x_trimmed):
         return x_trimmed[:3]
@@ -33,7 +34,7 @@ def first_three_letters(x):
         return None
 
 
-def first_four_letters(x):
+def first_four_letters(x: str) -> Optional[str]:
     x_trimmed = x.strip()
     if len(x_trimmed):
         return x_trimmed[:4]
@@ -41,7 +42,7 @@ def first_four_letters(x):
         return None
 
 
-def first_five_letters(x):
+def first_five_letters(x: str) -> Optional[str]:
     x_trimmed = x.strip()
     if len(x_trimmed):
         return x_trimmed[:5]
@@ -49,34 +50,34 @@ def first_five_letters(x):
         return None
 
 
-def first_three_letters_no_space(x):
-    x = x.replace(' ', '')
+def first_three_letters_no_space(x: str) -> Optional[str]:
+    x = x.replace(" ", "")
     if len(x):
         return x[:3]
     else:
         return None
 
 
-def first_four_letters_no_space(x):
-    x = x.replace(' ', '')
+def first_four_letters_no_space(x: str) -> Optional[str]:
+    x = x.replace(" ", "")
     if len(x):
         return x[:4]
     else:
         return None
 
 
-def first_five_letters_no_space(x):
-    x = x.replace(' ', '')
+def first_five_letters_no_space(x: str) -> Optional[str]:
+    x = x.replace(" ", "")
     if len(x):
         return x[:5]
     else:
         return None
 
 
-def sorted_integers(x):
-    digits = re.compile(r'\d+').findall
+def sorted_integers(x: str) -> Optional[str]:
+    digits = re.compile(r"\d+").findall
     numeric_list = digits(x)
-    numeric_list = sorted([int(n) for n in numeric_list])
+    numeric_list = sorted(int(n) for n in numeric_list)
     string_list = [str(n) for n in numeric_list]
     if len(string_list):
         return " ".join(string_list)
@@ -84,8 +85,8 @@ def sorted_integers(x):
         return None
 
 
-def first_integer(x):
-    digits = re.compile(r'\d+').findall
+def first_integer(x: str) -> Optional[str]:
+    digits = re.compile(r"\d+").findall
     numeric_list = digits(x)
     if len(numeric_list):
         return numeric_list[0]
@@ -93,8 +94,8 @@ def first_integer(x):
         return None
 
 
-def last_integer(x):
-    digits = re.compile(r'\d+').findall
+def last_integer(x: str) -> Optional[str]:
+    digits = re.compile(r"\d+").findall
     numeric_list = digits(x)
     if len(numeric_list):
         return numeric_list[-1]
@@ -102,18 +103,18 @@ def last_integer(x):
         return None
 
 
-def largest_integer(x):
-    digits = re.compile(r'\d+').findall
+def largest_integer(x: str) -> Optional[str]:
+    digits = re.compile(r"\d+").findall
     numeric_list = digits(x)
-    numeric_list = sorted([int(n) for n in numeric_list])
+    numeric_list = sorted(int(n) for n in numeric_list)
     if len(numeric_list):
         return str(numeric_list[-1])
     else:
         return None
 
 
-def three_letter_abbreviation(x):
-    letters = re.compile((r'[a-zA-Z]+')).findall
+def three_letter_abbreviation(x: str) -> Optional[str]:
+    letters = re.compile(r"[a-zA-Z]+").findall
     word_list = letters(x)
     if len(word_list) >= 3:
         abbreviation = "".join(w[0] for w in word_list[:3])
@@ -122,6 +123,19 @@ def three_letter_abbreviation(x):
         return None
 
 
-all_rules = [whole_field, first_word, first_two_words, first_three_letters, first_four_letters, first_five_letters,
-             first_three_letters_no_space, first_four_letters_no_space, first_five_letters_no_space, sorted_integers,
-             first_integer, last_integer, largest_integer, three_letter_abbreviation]
+all_rules = [
+    whole_field,
+    first_word,
+    first_two_words,
+    first_three_letters,
+    first_four_letters,
+    first_five_letters,
+    first_three_letters_no_space,
+    first_four_letters_no_space,
+    first_five_letters_no_space,
+    sorted_integers,
+    first_integer,
+    last_integer,
+    largest_integer,
+    three_letter_abbreviation,
+]

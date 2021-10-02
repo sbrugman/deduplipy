@@ -1,3 +1,3 @@
-__all__ = ['Deduplicator']
+__all__ = ["Deduplicator"]
 
 from .deduplicator import Deduplicator

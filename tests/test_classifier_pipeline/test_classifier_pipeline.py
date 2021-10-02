@@ -5,7 +5,10 @@ from deduplipy.classifier_pipeline.classifier_pipeline import ClassifierPipeline
 
 def test_base_case():
     myClassifierPipeline = ClassifierPipeline()
-    assert list(myClassifierPipeline.classifier.named_steps.keys()) == ['standardscaler', 'logisticregression']
+    assert list(myClassifierPipeline.classifier.named_steps.keys()) == [
+        "standardscaler",
+        "logisticregression",
+    ]
     X = [[0], [1]]
     y = [0, 1]
     myClassifierPipeline.fit(X, y)

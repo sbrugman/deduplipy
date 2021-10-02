@@ -47,7 +47,7 @@ python setup.py develop
 Apply deduplication your Pandas dataframe `df` as follows:
 
 ```python
-myDedupliPy = Deduplicator(col_names=['name', 'address'])
+myDedupliPy = Deduplicator(col_names=["name", "address"])
 myDedupliPy.fit(df)
 ```
 

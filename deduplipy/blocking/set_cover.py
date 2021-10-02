@@ -1,5 +1,5 @@
 import heapq
-from typing import List, Set
+from typing import List, Set, Union
 
 
 def greedy_set_cover(subsets: List, parent_set: Set, recall: float = 1.0) -> List:
@@ -21,7 +21,7 @@ def greedy_set_cover(subsets: List, parent_set: Set, recall: float = 1.0) -> Lis
         parent_set = set(parent_set)
     subsets = [set(x) if not isinstance(x, set) else x for x in subsets]
     max = len(parent_set)
-    heap = []
+    heap: List[List[Union[int, set]]] = []
     for s in subsets:
         # Python's heapq lets you pop the *smallest* value, so we
         # want to use max-len(s) as a score, not len(s).
@@ -29,7 +29,7 @@ def greedy_set_cover(subsets: List, parent_set: Set, recall: float = 1.0) -> Lis
         # used to tiebreak equal scores.
         heapq.heappush(heap, [max - len(s), len(heap), s])
     results = []
-    result_set = set()
+    result_set: Set = set()
     while result_set < parent_set:
         best = []
         unused = []
@@ -56,7 +56,7 @@ def greedy_set_cover(subsets: List, parent_set: Set, recall: float = 1.0) -> Lis
         result_set.update(add_set)
         coverage = len(result_set.intersection(parent_set)) / len(parent_set)
         if coverage >= recall:
-            print(f'recall threshold reached, recall = {coverage}')
+            print(f"recall threshold reached, recall = {coverage}")
             return results
         # subsets that were not the best get put back on the heap for next time.
         while unused:

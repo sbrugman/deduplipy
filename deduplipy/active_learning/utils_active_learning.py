@@ -14,7 +14,7 @@ def input_assert(message: str, choices: List[str]) -> str:
     """
     output = input(message).lower()
     if output not in choices:
-        print('Wrong input!')
+        print("Wrong input!")
         return input_assert(message, choices)
     else:
         return output

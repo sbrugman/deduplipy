@@ -1,3 +1,3 @@
-__all__ = ['ClassifierPipeline']
+__all__ = ["ClassifierPipeline"]
 
 from .classifier_pipeline import ClassifierPipeline

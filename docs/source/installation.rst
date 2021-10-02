@@ -1,7 +1,7 @@
 Installation
 ************
 
-Install `deduplipy` using pip:
+Install ``deduplipy`` using pip:
 
 .. code-block:: bash
 
