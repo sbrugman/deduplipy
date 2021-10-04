@@ -14,7 +14,8 @@ def input_assert(message: str, choices: List[str]) -> str:
     """
     output = input(message).lower()
     if output not in choices:
-        print("Wrong input!")
+        print(f"{output} not in available choices.")
+        print(f"Select one from: {', '.join(choices)}")
         return input_assert(message, choices)
     else:
         return output
